@@ -20,3 +20,6 @@ ui/dist/
 # IDE
 .vscode/
 .idea/
+
+ui/*.tsbuildinfo
+

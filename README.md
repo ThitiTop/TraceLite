@@ -6,7 +6,7 @@ Open-source log intelligence starter for microservices using agent shipping:
 
 ## Quick start
 
-1. `docker compose -f deploy/docker-compose.yml up --build`
+1. `make up`
 2. Send logs to `sample-logs/app.log` (or bind real app logs)
 3. Open UI: `http://localhost:3000`
 4. API health: `http://localhost:8080/v1/healthz`
