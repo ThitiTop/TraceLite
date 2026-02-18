@@ -349,7 +349,11 @@ func criticalPath(spans map[string]model.SpanRow, children map[string][]string) 
 			}
 		}
 		visiting[id] = false
-		total := s.DurationMs + bestChild
+		own := s.SelfTimeMs
+		if own == 0 {
+			own = s.DurationMs
+		}
+		total := own + bestChild
 		memo[id] = total
 		return total
 	}
