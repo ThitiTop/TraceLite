@@ -1,0 +1,22 @@
+﻿# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+**/vendor/
+**/.cache/
+
+# Node
+ui/node_modules/
+ui/dist/
+
+# Runtime data
+.deploy-data/
+*.log
+
+# IDE
+.vscode/
+.idea/

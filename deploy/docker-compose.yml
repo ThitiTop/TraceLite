@@ -1,0 +1,62 @@
+﻿version: "3.9"
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse/config.xml:/etc/clickhouse-server/config.d/custom.xml:ro
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+      - ch_data:/var/lib/clickhouse
+
+  collector:
+    build:
+      context: ../collector
+    environment:
+      - COLLECTOR_ADDR=:8443
+      - CLICKHOUSE_DSN=http://clickhouse:8123
+      - CLICKHOUSE_DB=trace_lite
+      - INGEST_TOKEN=change-me
+      - TLS_AUTO_SELF_SIGNED=true
+    depends_on:
+      - clickhouse
+    ports:
+      - "8443:8443"
+
+  api:
+    build:
+      context: ../api
+    environment:
+      - API_ADDR=:8080
+      - CLICKHOUSE_DSN=http://clickhouse:8123
+      - CLICKHOUSE_DB=trace_lite
+    depends_on:
+      - clickhouse
+    ports:
+      - "8080:8080"
+
+  ui:
+    build:
+      context: ../ui
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.1
+    depends_on:
+      - collector
+    environment:
+      - ENV=dev
+      - SERVICE_NAME=demo-service
+      - SERVICE_VERSION=1.0.0
+      - LOG_SHIP_TOKEN=change-me
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ../sample-logs:/var/log/app
+
+volumes:
+  ch_data:

@@ -1,0 +1,12 @@
+﻿<clickhouse>
+  <logger>
+    <level>information</level>
+  </logger>
+  <profiles>
+    <default>
+      <max_memory_usage>3000000000</max_memory_usage>
+      <use_uncompressed_cache>0</use_uncompressed_cache>
+      <load_balancing>random</load_balancing>
+    </default>
+  </profiles>
+</clickhouse>
