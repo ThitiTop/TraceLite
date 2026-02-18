@@ -1,8 +1,10 @@
-﻿version: "3.9"
-
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
+    environment:
+      - CLICKHOUSE_DB=trace_lite
+      - CLICKHOUSE_USER=trace
+      - CLICKHOUSE_PASSWORD=tracepass
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -16,7 +18,7 @@ services:
       context: ../collector
     environment:
       - COLLECTOR_ADDR=:8443
-      - CLICKHOUSE_DSN=http://clickhouse:8123
+      - CLICKHOUSE_DSN=http://trace:tracepass@clickhouse:8123
       - CLICKHOUSE_DB=trace_lite
       - INGEST_TOKEN=change-me
       - TLS_AUTO_SELF_SIGNED=true
@@ -30,7 +32,7 @@ services:
       context: ../api
     environment:
       - API_ADDR=:8080
-      - CLICKHOUSE_DSN=http://clickhouse:8123
+      - CLICKHOUSE_DSN=http://trace:tracepass@clickhouse:8123
       - CLICKHOUSE_DB=trace_lite
     depends_on:
       - clickhouse

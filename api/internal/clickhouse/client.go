@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -49,8 +50,9 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 func (c *Client) Query(ctx context.Context, sql string) ([]map[string]any, error) {
-	statement := fmt.Sprintf("USE %s; %s FORMAT JSON", c.database, strings.TrimSuffix(strings.TrimSpace(sql), ";"))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/", bytes.NewBufferString(statement))
+	statement := fmt.Sprintf("%s FORMAT JSON", strings.TrimSuffix(strings.TrimSpace(sql), ";"))
+	queryURL := fmt.Sprintf("%s/?database=%s", c.baseURL, url.QueryEscape(c.database))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, queryURL, bytes.NewBufferString(statement))
 	if err != nil {
 		return nil, err
 	}

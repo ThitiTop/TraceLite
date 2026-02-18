@@ -146,15 +146,20 @@ func (h *Handler) Hosts(w http.ResponseWriter, r *http.Request) {
 
 	sql := fmt.Sprintf(`
 SELECT
-  host,
-  sum(logs) AS logs,
-  sum(errors) AS errors,
-  max(last_seen_ts) AS last_seen,
-  max(distinct_services) AS active_services,
-  round(sum(errors) / greatest(sum(logs), 1), 4) AS error_rate
-FROM host_stats_minute
-WHERE %s
-GROUP BY host
+  host, logs, errors, last_seen, active_services,
+  round(if(logs = 0, 0, errors / logs), 4) AS error_rate
+FROM
+(
+  SELECT
+    host,
+    sum(logs) AS logs,
+    sum(errors) AS errors,
+    max(last_seen_ts) AS last_seen,
+    max(distinct_services) AS active_services
+  FROM host_stats_minute
+  WHERE %s
+  GROUP BY host
+)
 ORDER BY logs DESC
 LIMIT 2000`, strings.Join(where, " AND "))
 

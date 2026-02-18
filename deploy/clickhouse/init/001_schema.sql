@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS trace_lite.raw_logs (
 ENGINE = MergeTree
 PARTITION BY toDate(ts)
 ORDER BY (env, service, ts, trace_id, span_id, host)
-TTL ts + INTERVAL 30 DAY;
+TTL toDateTime(ts) + INTERVAL 30 DAY;
 
 CREATE TABLE IF NOT EXISTS trace_lite.spans (
   trace_id          String,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS trace_lite.spans (
 ENGINE = ReplacingMergeTree(updated_at)
 PARTITION BY toDate(start_ts)
 ORDER BY (env, service, start_ts, trace_id, span_id)
-TTL start_ts + INTERVAL 90 DAY;
+TTL toDateTime(start_ts) + INTERVAL 90 DAY;
 
 CREATE TABLE IF NOT EXISTS trace_lite.traces (
   trace_id            String,
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS trace_lite.traces (
 ENGINE = ReplacingMergeTree(updated_at)
 PARTITION BY toDate(start_ts)
 ORDER BY (env, start_ts, trace_id)
-TTL start_ts + INTERVAL 180 DAY;
+TTL toDateTime(start_ts) + INTERVAL 180 DAY;
 
 CREATE TABLE IF NOT EXISTS trace_lite.dependency_edges_minute (
   bucket_ts         DateTime('UTC'),
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS trace_lite.host_stats_minute (
   distinct_services  UInt32,
   last_seen_ts       DateTime64(3, 'UTC')
 )
-ENGINE = SummingMergeTree
+ENGINE = MergeTree
 PARTITION BY toDate(bucket_ts)
 ORDER BY (env, bucket_ts, host)
 TTL bucket_ts + INTERVAL 90 DAY;
