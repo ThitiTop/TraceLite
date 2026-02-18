@@ -3,6 +3,7 @@ package reconstruct
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,6 +109,9 @@ func (r *Reconstructor) Add(rows []model.RawLogRow, eventTimes []time.Time) {
 		if row.StatusCode >= 400 {
 			s.isError = true
 			s.statusCode = row.StatusCode
+		}
+		if strings.EqualFold(row.Attrs["status"], "ERROR") || strings.EqualFold(row.Attrs["status"], "FAIL") {
+			s.isError = true
 		}
 		if row.StatusCode > 0 {
 			s.statusCode = row.StatusCode

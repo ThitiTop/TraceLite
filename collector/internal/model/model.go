@@ -13,6 +13,7 @@ type IngestEvent struct {
 	Host          string            `json:"host"`
 	Level         string            `json:"level"`
 	Message       string            `json:"message"`
+	Status        string            `json:"status"`
 	CorrelationID string            `json:"correlationId"`
 	SpanID        string            `json:"spanId"`
 	ParentSpanID  string            `json:"parentSpanId"`
@@ -114,6 +115,9 @@ func (e IngestEvent) ToRaw(raw string) (RawLogRow, time.Time, error) {
 	attrs := e.Attrs
 	if attrs == nil {
 		attrs = map[string]string{}
+	}
+	if s := strings.TrimSpace(e.Status); s != "" {
+		attrs["status"] = strings.ToUpper(s)
 	}
 
 	row := RawLogRow{
