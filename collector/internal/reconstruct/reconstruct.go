@@ -283,13 +283,7 @@ func buildTraceRow(env, traceID string, spans []model.SpanRow) model.TraceRow {
 	versions := map[string]struct{}{}
 	errorCount := 0
 	rootService := spans[0].Service
-	byID := map[string]model.SpanRow{}
-	children := map[string][]string{}
 	for _, s := range spans {
-		byID[s.SpanID] = s
-		if s.ParentSpanID != "" {
-			children[s.ParentSpanID] = append(children[s.ParentSpanID], s.SpanID)
-		}
 		st := parseCHTime(s.StartTS)
 		en := parseCHTime(s.EndTS)
 		if st.Before(start) {
@@ -306,7 +300,7 @@ func buildTraceRow(env, traceID string, spans []model.SpanRow) model.TraceRow {
 		}
 	}
 
-	critical := criticalPath(byID, children)
+	critical := uint32(end.Sub(start).Milliseconds())
 	versionsOut := make([]string, 0, len(versions))
 	for v := range versions {
 		versionsOut = append(versionsOut, v)
