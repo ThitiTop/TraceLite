@@ -41,10 +41,11 @@ const apiBase =
   import.meta.env.VITE_API_BASE ?? `${window.location.protocol}//${window.location.hostname}:8080`;
 
 function App() {
-  const [env, setEnv] = useState("prod");
-  const [service, setService] = useState("checkout");
-  const [baseVersion, setBaseVersion] = useState("1.11.0");
-  const [candVersion, setCandVersion] = useState("1.12.0");
+  const [env, setEnv] = useState("dev");
+  const [service, setService] = useState("api");
+  const [baseVersion, setBaseVersion] = useState("1.0.0");
+  const [candVersion, setCandVersion] = useState("1.1.0");
+  const [lookbackHours, setLookbackHours] = useState(24);
   const [loading, setLoading] = useState(false);
 
   const [traces, setTraces] = useState<TraceItem[]>([]);
@@ -55,13 +56,13 @@ function App() {
 
   const params = useMemo(() => {
     const to = new Date();
-    const from = new Date(to.getTime() - 60 * 60 * 1000);
+    const from = new Date(to.getTime() - lookbackHours * 60 * 60 * 1000);
     return new URLSearchParams({
       from: from.toISOString(),
       to: to.toISOString(),
       env
     });
-  }, [env]);
+  }, [env, lookbackHours]);
 
   const refresh = async () => {
     setLoading(true);
@@ -105,6 +106,11 @@ function App() {
           <input value={service} onChange={(e) => setService(e.target.value)} placeholder="service" />
           <input value={baseVersion} onChange={(e) => setBaseVersion(e.target.value)} placeholder="base" />
           <input value={candVersion} onChange={(e) => setCandVersion(e.target.value)} placeholder="candidate" />
+          <select value={lookbackHours} onChange={(e) => setLookbackHours(Number(e.target.value))}>
+            <option value={1}>Last 1h</option>
+            <option value={6}>Last 6h</option>
+            <option value={24}>Last 24h</option>
+          </select>
           <button disabled={loading} onClick={() => void refresh()}>
             {loading ? "Loading..." : "Refresh"}
           </button>
