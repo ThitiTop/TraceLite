@@ -19,8 +19,10 @@ func main() {
 	mux.HandleFunc("/v1/traces", h.Traces)
 	mux.HandleFunc("/v1/traces/", h.TraceByID)
 	mux.HandleFunc("/v1/dependency", h.Dependency)
+	mux.HandleFunc("/v1/dependency/diff", h.DependencyDiff)
 	mux.HandleFunc("/v1/hosts", h.Hosts)
 	mux.HandleFunc("/v1/compare", h.Compare)
+	mux.HandleFunc("/v1/errors", h.Errors)
 
 	log.Printf("api listening on %s", cfg.Addr)
 	if err := http.ListenAndServe(cfg.Addr, withCORS(mux)); err != nil {
