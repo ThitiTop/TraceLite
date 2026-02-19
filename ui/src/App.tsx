@@ -97,6 +97,25 @@ type DrilldownPayload = {
   slow_spots: SlowSpot[];
 };
 
+type TraceSpanDetail = {
+  span_id: string;
+  parent_span_id: string;
+  service: string;
+  host: string;
+  version: string;
+  operation: string;
+  start_ts: string;
+  end_ts: string;
+  duration_ms: number;
+  status_code: number;
+  is_error: number | boolean;
+};
+
+type TraceDetailPayload = {
+  trace: TraceItem | null;
+  spans: TraceSpanDetail[];
+};
+
 type DependencyDiffEdge = {
   caller_service: string;
   callee_service: string;
@@ -149,6 +168,7 @@ function App() {
   const [traces, setTraces] = useState<TraceItem[]>([]);
   const [selectedTraceId, setSelectedTraceId] = useState("");
   const [drilldown, setDrilldown] = useState<DrilldownPayload | null>(null);
+  const [traceDetail, setTraceDetail] = useState<TraceDetailPayload | null>(null);
 
   const [hosts, setHosts] = useState<HostItem[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
@@ -246,16 +266,18 @@ function App() {
     }
   };
 
-  const fetchDrilldown = async (traceId: string) => {
+  const fetchTraceContext = async (traceId: string) => {
     if (!traceId) {
       setDrilldown(null);
+      setTraceDetail(null);
       return;
     }
-    const payload = await fetchJson<DrilldownPayload | null>(
-      `${apiBase}/v1/traces/${traceId}/waterfall`,
-      null
-    );
-    setDrilldown(payload);
+    const [drillPayload, detailPayload] = await Promise.all([
+      fetchJson<DrilldownPayload | null>(`${apiBase}/v1/traces/${traceId}/waterfall`, null),
+      fetchJson<TraceDetailPayload | null>(`${apiBase}/v1/traces/${traceId}`, null)
+    ]);
+    setDrilldown(drillPayload);
+    setTraceDetail(detailPayload);
   };
 
   const refresh = async () => {
@@ -300,9 +322,10 @@ function App() {
           : traceList[0]?.trace_id ?? "";
       setSelectedTraceId(preferred);
       if (preferred) {
-        await fetchDrilldown(preferred);
+        await fetchTraceContext(preferred);
       } else {
         setDrilldown(null);
+        setTraceDetail(null);
       }
     } catch (e) {
       console.error(e);
@@ -314,6 +337,97 @@ function App() {
   useEffect(() => {
     void refresh();
   }, [params.toString(), service, baseVersion, candVersion]);
+
+  const traceHosts = useMemo(() => {
+    const spans = traceDetail?.spans ?? [];
+    if (spans.length === 0) {
+      return hosts;
+    }
+    const byHost = new Map<
+      string,
+      { host: string; logs: number; errors: number; activeServices: Set<string>; lastSeen: string }
+    >();
+    spans.forEach((s) => {
+      const hostName = s.host || "unknown-host";
+      const curr =
+        byHost.get(hostName) ??
+        { host: hostName, logs: 0, errors: 0, activeServices: new Set<string>(), lastSeen: s.end_ts || s.start_ts || "" };
+      curr.logs += 1;
+      if (Boolean(s.is_error) || num(s.status_code) >= 400) {
+        curr.errors += 1;
+      }
+      if (s.service) {
+        curr.activeServices.add(s.service);
+      }
+      const seen = s.end_ts || s.start_ts || "";
+      if (seen && seen > curr.lastSeen) {
+        curr.lastSeen = seen;
+      }
+      byHost.set(hostName, curr);
+    });
+    return Array.from(byHost.values())
+      .map((h) => ({
+        host: h.host,
+        logs: h.logs,
+        errors: h.errors,
+        active_services: h.activeServices.size,
+        last_seen: h.lastSeen,
+        error_rate: h.errors / Math.max(1, h.logs)
+      }))
+      .sort((a, b) => num(b.logs) - num(a.logs));
+  }, [traceDetail, hosts]);
+
+  const traceErrorPanel = useMemo(() => {
+    const spans = traceDetail?.spans ?? [];
+    if (spans.length === 0) {
+      return errorPanel;
+    }
+
+    const byService = new Map<string, { service: string; errors: number; calls: number }>();
+    const byOperation = new Map<string, { service: string; operation: string; errors: number; calls: number }>();
+
+    spans.forEach((s) => {
+      const isErr = Boolean(s.is_error) || num(s.status_code) >= 400;
+      const svc = s.service || "unknown-service";
+      const op = s.operation || "unknown-op";
+
+      const svcCurr = byService.get(svc) ?? { service: svc, errors: 0, calls: 0 };
+      svcCurr.calls += 1;
+      if (isErr) {
+        svcCurr.errors += 1;
+      }
+      byService.set(svc, svcCurr);
+
+      const opKey = `${svc}::${op}`;
+      const opCurr = byOperation.get(opKey) ?? { service: svc, operation: op, errors: 0, calls: 0 };
+      opCurr.calls += 1;
+      if (isErr) {
+        opCurr.errors += 1;
+      }
+      byOperation.set(opKey, opCurr);
+    });
+
+    return {
+      service_breakdown: Array.from(byService.values())
+        .map((x) => ({
+          service: x.service,
+          errors: x.errors,
+          calls: x.calls,
+          error_rate: x.errors / Math.max(1, x.calls)
+        }))
+        .sort((a, b) => num(b.errors) - num(a.errors)),
+      top_operations: Array.from(byOperation.values())
+        .map((x) => ({
+          service: x.service,
+          operation: x.operation,
+          errors: x.errors,
+          calls: x.calls,
+          error_rate: x.errors / Math.max(1, x.calls)
+        }))
+        .sort((a, b) => num(b.errors) - num(a.errors)),
+      new_errors: []
+    } as ErrorPanel;
+  }, [traceDetail, errorPanel]);
 
   return (
     <div className="page">
@@ -356,7 +470,7 @@ function App() {
                   className={selectedTraceId === t.trace_id ? "row-active" : ""}
                   onClick={() => {
                     setSelectedTraceId(t.trace_id);
-                    void fetchDrilldown(t.trace_id);
+                    void fetchTraceContext(t.trace_id);
                   }}
                 >
                   <td>{t.trace_id}</td>
@@ -471,7 +585,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {hosts.map((h) => (
+              {traceHosts.map((h) => (
                 <tr key={h.host}>
                   <td>{h.host}</td>
                   <td>{num(h.logs)}</td>
@@ -560,7 +674,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {(errorPanel?.service_breakdown ?? []).map((r) => (
+              {(traceErrorPanel?.service_breakdown ?? []).map((r) => (
                 <tr key={r.service}>
                   <td>{r.service}</td>
                   <td>{num(r.errors)}</td>
@@ -580,7 +694,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {(errorPanel?.top_operations ?? []).slice(0, 8).map((r, idx) => (
+              {(traceErrorPanel?.top_operations ?? []).slice(0, 8).map((r, idx) => (
                 <tr key={`${r.service}-${r.operation}-${idx}`}>
                   <td>{r.service}</td>
                   <td>{r.operation}</td>
