@@ -596,7 +596,7 @@ func firstOrNil(v []map[string]any) any {
 
 func parseRange(r *http.Request) (time.Time, time.Time) {
 	to := time.Now().UTC()
-	from := to.Add(-1 * time.Hour)
+	from := to.Add(-7 * 24 * time.Hour)
 	if rawTo := r.URL.Query().Get("to"); rawTo != "" {
 		if parsed, err := time.Parse(time.RFC3339, rawTo); err == nil {
 			to = parsed.UTC()
@@ -608,7 +608,7 @@ func parseRange(r *http.Request) (time.Time, time.Time) {
 		}
 	}
 	if !from.Before(to) {
-		from = to.Add(-1 * time.Hour)
+		from = to.Add(-7 * 24 * time.Hour)
 	}
 	return from, to
 }

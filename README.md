@@ -32,3 +32,4 @@ Open-source log intelligence starter for microservices using agent shipping:
 
 - Collector supports auto self-signed TLS for local compose.
 - Production should use real certs + token/mTLS.
+- UI default lookback is `Last 7d` and API default range is past 7 days when `from/to` are omitted.

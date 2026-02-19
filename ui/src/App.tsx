@@ -134,7 +134,7 @@ function App() {
   const [service, setService] = useState("api");
   const [baseVersion, setBaseVersion] = useState("1.0.0");
   const [candVersion, setCandVersion] = useState("1.1.0");
-  const [lookbackHours, setLookbackHours] = useState(24);
+  const [lookbackHours, setLookbackHours] = useState(168);
   const [loading, setLoading] = useState(false);
 
   const [traces, setTraces] = useState<TraceItem[]>([]);
@@ -242,6 +242,7 @@ function App() {
             <option value={1}>Last 1h</option>
             <option value={6}>Last 6h</option>
             <option value={24}>Last 24h</option>
+            <option value={168}>Last 7d</option>
           </select>
           <button disabled={loading} onClick={() => void refresh()}>
             {loading ? "Loading..." : "Refresh"}
