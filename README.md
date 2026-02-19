@@ -11,6 +11,15 @@ Open-source log intelligence starter for microservices using agent shipping:
 3. Open UI: `http://localhost:3000`
 4. API health: `http://localhost:8080/v1/healthz`
 
+## Local URLs
+
+- UI: `http://localhost:3000`
+- API: `http://localhost:8080`
+- API Health: `http://localhost:8080/v1/healthz`
+- Collector ingest (HTTPS): `https://localhost:8443/v1/logs`
+- ClickHouse HTTP: `http://localhost:8123`
+- ClickHouse Native: `localhost:9000`
+
 ## Components
 
 - `collector`: HTTPS ingest + span/trace reconstruction
