@@ -129,6 +129,15 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const p95 = (values: number[]): number => {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+  return sorted[idx];
+};
+
 function App() {
   const [env, setEnv] = useState("dev");
   const [service, setService] = useState("api");
@@ -150,6 +159,68 @@ function App() {
 
   const [dependencyDiff, setDependencyDiff] = useState<DependencyDiffEdge[]>([]);
   const [errorPanel, setErrorPanel] = useState<ErrorPanel | null>(null);
+
+  const selectedTraceEdges = useMemo(() => {
+    const spans = drilldown?.waterfall ?? [];
+    if (spans.length === 0) {
+      return [] as GraphEdge[];
+    }
+
+    const bySpanId = new Map<string, WaterfallSpan>();
+    spans.forEach((s) => bySpanId.set(s.span_id, s));
+
+    const agg = new Map<
+      string,
+      {
+        caller_service: string;
+        callee_service: string;
+        calls: number;
+        error_calls: number;
+        durations: number[];
+      }
+    >();
+
+    spans.forEach((s) => {
+      if (!s.parent_span_id) {
+        return;
+      }
+      const parent = bySpanId.get(s.parent_span_id);
+      if (!parent) {
+        return;
+      }
+      if (parent.service === s.service) {
+        return;
+      }
+      const key = `${parent.service}->${s.service}`;
+      const curr = agg.get(key) ?? {
+        caller_service: parent.service,
+        callee_service: s.service,
+        calls: 0,
+        error_calls: 0,
+        durations: []
+      };
+      curr.calls += 1;
+      curr.durations.push(num(s.duration_ms));
+      if (s.is_error) {
+        curr.error_calls += 1;
+      }
+      agg.set(key, curr);
+    });
+
+    return Array.from(agg.values())
+      .map((a) => ({
+        caller_service: a.caller_service,
+        callee_service: a.callee_service,
+        calls: a.calls,
+        avg_latency_ms: a.durations.reduce((sum, d) => sum + d, 0) / Math.max(1, a.durations.length),
+        p95_ms: p95(a.durations),
+        error_calls: a.error_calls,
+        error_rate: a.error_calls / Math.max(1, a.calls)
+      }))
+      .sort((a, b) => num(b.calls) - num(a.calls));
+  }, [drilldown]);
+
+  const graphEdges = selectedTraceEdges.length > 0 ? selectedTraceEdges : edges;
 
   const params = useMemo(() => {
     const to = new Date();
@@ -347,8 +418,11 @@ function App() {
         </article>
 
         <article className="panel">
-          <h2>Dependency Graph</h2>
-          <DependencyGraph edges={edges} />
+          <h2>
+            Dependency Graph{" "}
+            {selectedTraceEdges.length > 0 && drilldown?.trace?.trace_id ? `(Trace: ${drilldown.trace.trace_id})` : "(Window Aggregate)"}
+          </h2>
+          <DependencyGraph edges={graphEdges} />
         </article>
 
         <article className="panel">
