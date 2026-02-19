@@ -87,6 +87,14 @@ td {
   font-size: 12px;
 }
 
+tbody tr:hover {
+  background: rgba(43, 106, 168, 0.08);
+}
+
+.row-active {
+  background: rgba(37, 128, 214, 0.14);
+}
+
 .compare-cards {
   display: flex;
   gap: 10px;
@@ -120,8 +128,138 @@ td {
   font-weight: 700;
 }
 
+.warn {
+  color: #9a6700;
+  font-weight: 700;
+}
+
+.drill-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.waterfall-wrap {
+  border: 1px solid #d7e6f6;
+  border-radius: 10px;
+  padding: 6px;
+  max-height: 330px;
+  overflow: auto;
+}
+
+.wf-row {
+  display: grid;
+  grid-template-columns: 270px 1fr 340px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px;
+  border-bottom: 1px dashed #e2edf8;
+}
+
+.wf-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+}
+
+.wf-label small {
+  color: #356085;
+}
+
+.wf-timeline {
+  position: relative;
+  height: 16px;
+  background: #eff6ff;
+  border-radius: 8px;
+  border: 1px solid #d8e8f8;
+}
+
+.wf-bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #2f72b7, #63a6e8);
+}
+
+.wf-critical .wf-bar {
+  background: linear-gradient(90deg, #ef6f00, #ffc53d);
+}
+
+.wf-error .wf-bar {
+  background: linear-gradient(90deg, #b42318, #f04438);
+}
+
+.wf-explain {
+  font-size: 11px;
+  color: #284866;
+}
+
+.chip-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.chip-block h3 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+}
+
+.chip-item {
+  font-size: 11px;
+  background: #f4f9ff;
+  border: 1px solid #d8e8f8;
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin-bottom: 5px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+}
+
+.badge-orange {
+  background: #fff4e5;
+  border-color: #f7b267;
+  color: #8a3d00;
+}
+
+.badge-red {
+  background: #fef3f2;
+  border-color: #fda29b;
+  color: #b42318;
+}
+
+.badge-yellow {
+  background: #fffaeb;
+  border-color: #facc15;
+  color: #854d0e;
+}
+
 @media (max-width: 900px) {
   .panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wf-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chip-row {
     grid-template-columns: 1fr;
   }
 }

@@ -5,9 +5,14 @@ import "reactflow/dist/style.css";
 export type GraphEdge = {
   caller_service: string;
   callee_service: string;
-  calls: number;
-  p95_ms: number;
-  error_calls: number;
+  calls?: number;
+  p95_ms?: number;
+  avg_latency_ms?: number;
+  error_calls?: number;
+  error_rate?: number;
+  status?: string;
+  call_diff_pct?: number;
+  is_new_edge?: boolean;
 };
 
 type Props = {
@@ -41,11 +46,12 @@ function DependencyGraph({ edges }: Props) {
       id: `${e.caller_service}-${e.callee_service}-${idx}`,
       source: e.caller_service,
       target: e.callee_service,
-      label: `${e.calls} calls | p95 ${e.p95_ms}ms`,
-      animated: e.p95_ms > 500,
+      label: `${Math.round(e.calls ?? 0)} calls | p95 ${Math.round(e.p95_ms ?? 0)}ms | err ${Math.round((e.error_rate ?? 0) * 100)}%`,
+      animated: (e.p95_ms ?? 0) > 500 || (e.call_diff_pct ?? 0) > 100,
       style: {
-        stroke: e.error_calls > 0 ? "#d64545" : "#205493",
-        strokeWidth: Math.min(8, Math.max(1, e.calls / 100))
+        stroke: e.is_new_edge || e.status === "new" ? "#cf1322" : (e.error_rate ?? 0) > 0.1 ? "#d64545" : "#205493",
+        strokeDasharray: e.status === "removed" ? "4 3" : undefined,
+        strokeWidth: Math.min(8, Math.max(1, (e.calls ?? 0) / 100))
       }
     }));
 
