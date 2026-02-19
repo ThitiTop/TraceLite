@@ -163,6 +163,7 @@ function App() {
   const [baseVersion, setBaseVersion] = useState("1.0.0");
   const [candVersion, setCandVersion] = useState("1.1.0");
   const [lookbackHours, setLookbackHours] = useState(168);
+  const [activeTab, setActiveTab] = useState<"trace" | "summary">("trace");
   const [loading, setLoading] = useState(false);
 
   const [traces, setTraces] = useState<TraceItem[]>([]);
@@ -450,261 +451,280 @@ function App() {
         </div>
       </header>
 
-      <section className="panel-grid">
-        <article className="panel">
-          <h2>Trace Explorer</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Trace</th>
-                <th>Root</th>
-                <th>Duration</th>
-                <th>Critical</th>
-                <th>Errors</th>
-              </tr>
-            </thead>
-            <tbody>
-              {traces.map((t) => (
-                <tr
-                  key={t.trace_id}
-                  className={selectedTraceId === t.trace_id ? "row-active" : ""}
-                  onClick={() => {
-                    setSelectedTraceId(t.trace_id);
-                    void fetchTraceContext(t.trace_id);
-                  }}
-                >
-                  <td>{t.trace_id}</td>
-                  <td>{t.root_service}</td>
-                  <td>{num(t.duration_ms)} ms</td>
-                  <td>{num(t.critical_path_ms)} ms</td>
-                  <td>{num(t.error_count)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+      <div className="tabs">
+        <button
+          className={`tab-btn ${activeTab === "trace" ? "active" : ""}`}
+          onClick={() => setActiveTab("trace")}
+        >
+          Trace Analysis
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "summary" ? "active" : ""}`}
+          onClick={() => setActiveTab("summary")}
+        >
+          Summary
+        </button>
+      </div>
 
-        <article className="panel large">
-          <h2>Trace Drill-Down Waterfall</h2>
-          {drilldown ? (
-            <>
-              <div className="drill-meta">
-                <span>Trace: {drilldown.trace?.trace_id}</span>
-                <span>Critical Path: {drilldown.critical_path?.join(" -> ") || "-"}</span>
-              </div>
-              <div className="waterfall-wrap">
-                {drilldown.waterfall?.map((s) => (
-                  <div key={s.span_id} className={`wf-row ${s.is_critical ? "wf-critical" : ""} ${s.is_error ? "wf-error" : ""}`}>
-                    <div className="wf-label" style={{ paddingLeft: `${num(s.depth) * 14}px` }}>
-                      <strong>{s.service}</strong> <span>{s.span_id}</span>
-                      <small>{num(s.duration_ms)}ms (self {num(s.self_time_ms)} / wait {num(s.wait_ms)})</small>
-                    </div>
-                    <div className="wf-timeline">
-                      <div className="wf-bar" style={{ left: `${num(s.left_pct)}%`, width: `${num(s.width_pct)}%` }} />
-                    </div>
-                    <div className="wf-explain">{s.explanation}</div>
-                  </div>
+      {activeTab === "trace" ? (
+        <section className="panel-grid">
+          <article className="panel">
+            <h2>Trace Explorer</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Trace</th>
+                  <th>Root</th>
+                  <th>Duration</th>
+                  <th>Critical</th>
+                  <th>Errors</th>
+                </tr>
+              </thead>
+              <tbody>
+                {traces.map((t) => (
+                  <tr
+                    key={t.trace_id}
+                    className={selectedTraceId === t.trace_id ? "row-active" : ""}
+                    onClick={() => {
+                      setSelectedTraceId(t.trace_id);
+                      void fetchTraceContext(t.trace_id);
+                    }}
+                  >
+                    <td>{t.trace_id}</td>
+                    <td>{t.root_service}</td>
+                    <td>{num(t.duration_ms)} ms</td>
+                    <td>{num(t.critical_path_ms)} ms</td>
+                    <td>{num(t.error_count)}</td>
+                  </tr>
                 ))}
-              </div>
-              <div className="chip-row">
-                <div className="chip-block">
-                  <h3>Slow Spots</h3>
-                  {(drilldown.slow_spots ?? []).slice(0, 5).map((s) => (
-                    <div key={s.span_id} className="chip-item">
-                      {s.service}#{s.span_id} score {num(s.score).toFixed(2)}
+              </tbody>
+            </table>
+          </article>
+
+          <article className="panel large">
+            <h2>Trace Drill-Down Waterfall</h2>
+            {drilldown ? (
+              <>
+                <div className="drill-meta">
+                  <span>Trace: {drilldown.trace?.trace_id}</span>
+                  <span>Critical Path: {drilldown.critical_path?.join(" -> ") || "-"}</span>
+                </div>
+                <div className="waterfall-wrap">
+                  {drilldown.waterfall?.map((s) => (
+                    <div key={s.span_id} className={`wf-row ${s.is_critical ? "wf-critical" : ""} ${s.is_error ? "wf-error" : ""}`}>
+                      <div className="wf-label" style={{ paddingLeft: `${num(s.depth) * 14}px` }}>
+                        <strong>{s.service}</strong> <span>{s.span_id}</span>
+                        <small>{num(s.duration_ms)}ms (self {num(s.self_time_ms)} / wait {num(s.wait_ms)})</small>
+                      </div>
+                      <div className="wf-timeline">
+                        <div className="wf-bar" style={{ left: `${num(s.left_pct)}%`, width: `${num(s.width_pct)}%` }} />
+                      </div>
+                      <div className="wf-explain">{s.explanation}</div>
                     </div>
                   ))}
                 </div>
-                <div className="chip-block">
-                  <h3>Error Chains</h3>
-                  {(drilldown.error_chains ?? []).length === 0 && <div className="chip-item">No error chain</div>}
-                  {(drilldown.error_chains ?? []).map((c) => (
-                    <div key={c.error_span_id} className="chip-item">
-                      {c.path.join(" -> ")}
-                    </div>
-                  ))}
+                <div className="chip-row">
+                  <div className="chip-block">
+                    <h3>Slow Spots</h3>
+                    {(drilldown.slow_spots ?? []).slice(0, 5).map((s) => (
+                      <div key={s.span_id} className="chip-item">
+                        {s.service}#{s.span_id} score {num(s.score).toFixed(2)}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="chip-block">
+                    <h3>Error Chains</h3>
+                    {(drilldown.error_chains ?? []).length === 0 && <div className="chip-item">No error chain</div>}
+                    {(drilldown.error_chains ?? []).map((c) => (
+                      <div key={c.error_span_id} className="chip-item">
+                        {c.path.join(" -> ")}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </>
-          ) : (
-            <p>No trace selected.</p>
-          )}
-        </article>
+              </>
+            ) : (
+              <p>No trace selected.</p>
+            )}
+          </article>
 
-        <article className="panel">
-          <h2>
-            Dependency Graph{" "}
-            {selectedTraceEdges.length > 0 && drilldown?.trace?.trace_id ? `(Trace: ${drilldown.trace.trace_id})` : "(Window Aggregate)"}
-          </h2>
-          <DependencyGraph edges={graphEdges} />
-        </article>
+          <article className="panel">
+            <h2>
+              Dependency Graph{" "}
+              {selectedTraceEdges.length > 0 && drilldown?.trace?.trace_id ? `(Trace: ${drilldown.trace.trace_id})` : "(Window Aggregate)"}
+            </h2>
+            <DependencyGraph edges={graphEdges} />
+          </article>
 
-        <article className="panel">
-          <h2>Root Cause Ranking</h2>
-          <div className="badge-row">
-            {anomalies.map((a, idx) => (
-              <span key={`${a.title}-${idx}`} className={`badge badge-${a.level}`}>
-                {a.title}: {a.message}
-              </span>
-            ))}
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Score</th>
-                <th>Latency%</th>
-                <th>Error%</th>
-                <th>Calls%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rootCauses.map((r) => (
-                <tr key={r.service}>
-                  <td>{r.service}</td>
-                  <td>{num(r.score).toFixed(2)}</td>
-                  <td>{num(r.latency_delta_pct).toFixed(1)}</td>
-                  <td>{num(r.error_delta_pct).toFixed(1)}</td>
-                  <td>{num(r.call_delta_pct).toFixed(1)}</td>
+          <article className="panel">
+            <h2>Host View</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Host</th>
+                  <th>Logs</th>
+                  <th>Error %</th>
+                  <th>Active Services</th>
+                  <th>Last Seen</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+              </thead>
+              <tbody>
+                {traceHosts.map((h) => (
+                  <tr key={h.host}>
+                    <td>{h.host}</td>
+                    <td>{num(h.logs)}</td>
+                    <td>{(num(h.error_rate) * 100).toFixed(2)}</td>
+                    <td>{num(h.active_services)}</td>
+                    <td>{h.last_seen}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
 
-        <article className="panel">
-          <h2>Host View</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Host</th>
-                <th>Logs</th>
-                <th>Error %</th>
-                <th>Active Services</th>
-                <th>Last Seen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {traceHosts.map((h) => (
-                <tr key={h.host}>
-                  <td>{h.host}</td>
-                  <td>{num(h.logs)}</td>
-                  <td>{(num(h.error_rate) * 100).toFixed(2)}</td>
-                  <td>{num(h.active_services)}</td>
-                  <td>{h.last_seen}</td>
+          <article className="panel">
+            <h2>Error Analysis</h2>
+            <h3>By Service</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Errors</th>
+                  <th>Calls</th>
+                  <th>Error %</th>
                 </tr>
+              </thead>
+              <tbody>
+                {(traceErrorPanel?.service_breakdown ?? []).map((r) => (
+                  <tr key={r.service}>
+                    <td>{r.service}</td>
+                    <td>{num(r.errors)}</td>
+                    <td>{num(r.calls)}</td>
+                    <td>{(num(r.error_rate) * 100).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <h3>Top Failing Operations</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Operation</th>
+                  <th>Errors</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(traceErrorPanel?.top_operations ?? []).slice(0, 8).map((r, idx) => (
+                  <tr key={`${r.service}-${r.operation}-${idx}`}>
+                    <td>{r.service}</td>
+                    <td>{r.operation}</td>
+                    <td>{num(r.errors)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
+        </section>
+      ) : (
+        <section className="panel-grid">
+          <article className="panel">
+            <h2>Root Cause Ranking</h2>
+            <div className="badge-row">
+              {anomalies.map((a, idx) => (
+                <span key={`${a.title}-${idx}`} className={`badge badge-${a.level}`}>
+                  {a.title}: {a.message}
+                </span>
               ))}
-            </tbody>
-          </table>
-        </article>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Score</th>
+                  <th>Latency%</th>
+                  <th>Error%</th>
+                  <th>Calls%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rootCauses.map((r) => (
+                  <tr key={r.service}>
+                    <td>{r.service}</td>
+                    <td>{num(r.score).toFixed(2)}</td>
+                    <td>{num(r.latency_delta_pct).toFixed(1)}</td>
+                    <td>{num(r.error_delta_pct).toFixed(1)}</td>
+                    <td>{num(r.call_delta_pct).toFixed(1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
 
-        <article className="panel">
-          <h2>Version Comparison</h2>
-          <div className="compare-cards">
-            {metrics.map((m) => (
-              <div key={m.version} className="card">
-                <h3>{m.version}</h3>
-                <p>Spans: {num(m.spans)}</p>
-                <p>P95: {num(m.p95_ms)} ms</p>
-                <p>P99: {num(m.p99_ms)} ms</p>
-                <p>Error: {(num(m.error_rate) * 100).toFixed(2)}%</p>
-              </div>
-            ))}
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Operation</th>
-                <th>Base p95</th>
-                <th>Cand p95</th>
-                <th>Delta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {operationDiff.map((d) => (
-                <tr key={d.operation}>
-                  <td>{d.operation}</td>
-                  <td>{num(d.base_p95_ms)}</td>
-                  <td>{num(d.cand_p95_ms)}</td>
-                  <td className={num(d.delta_p95_ms) > 0 ? "bad" : "good"}>{num(d.delta_p95_ms)}</td>
-                </tr>
+          <article className="panel">
+            <h2>Version Comparison</h2>
+            <div className="compare-cards">
+              {metrics.map((m) => (
+                <div key={m.version} className="card">
+                  <h3>{m.version}</h3>
+                  <p>Spans: {num(m.spans)}</p>
+                  <p>P95: {num(m.p95_ms)} ms</p>
+                  <p>P99: {num(m.p99_ms)} ms</p>
+                  <p>Error: {(num(m.error_rate) * 100).toFixed(2)}%</p>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </article>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Base p95</th>
+                  <th>Cand p95</th>
+                  <th>Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {operationDiff.map((d) => (
+                  <tr key={d.operation}>
+                    <td>{d.operation}</td>
+                    <td>{num(d.base_p95_ms)}</td>
+                    <td>{num(d.cand_p95_ms)}</td>
+                    <td className={num(d.delta_p95_ms) > 0 ? "bad" : "good"}>{num(d.delta_p95_ms)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
 
-        <article className="panel">
-          <h2>Structural Dependency Diff</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Edge</th>
-                <th>Status</th>
-                <th>Call Diff%</th>
-                <th>P95 Diff</th>
-                <th>Error Diff</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dependencyDiff.slice(0, 20).map((e, idx) => (
-                <tr key={`${e.caller_service}-${e.callee_service}-${idx}`}>
-                  <td>
-                    {e.caller_service} -&gt; {e.callee_service}
-                  </td>
-                  <td className={e.status === "new" ? "bad" : e.status === "removed" ? "warn" : ""}>{e.status}</td>
-                  <td>{num(e.call_diff_pct).toFixed(1)}</td>
-                  <td>{num(e.p95_diff_ms).toFixed(1)} ms</td>
-                  <td>{(num(e.error_rate_diff) * 100).toFixed(2)}%</td>
+          <article className="panel">
+            <h2>Structural Dependency Diff</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Edge</th>
+                  <th>Status</th>
+                  <th>Call Diff%</th>
+                  <th>P95 Diff</th>
+                  <th>Error Diff</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
-
-        <article className="panel">
-          <h2>Error Analysis</h2>
-          <h3>By Service</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Errors</th>
-                <th>Calls</th>
-                <th>Error %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(traceErrorPanel?.service_breakdown ?? []).map((r) => (
-                <tr key={r.service}>
-                  <td>{r.service}</td>
-                  <td>{num(r.errors)}</td>
-                  <td>{num(r.calls)}</td>
-                  <td>{(num(r.error_rate) * 100).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <h3>Top Failing Operations</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Operation</th>
-                <th>Errors</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(traceErrorPanel?.top_operations ?? []).slice(0, 8).map((r, idx) => (
-                <tr key={`${r.service}-${r.operation}-${idx}`}>
-                  <td>{r.service}</td>
-                  <td>{r.operation}</td>
-                  <td>{num(r.errors)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
-      </section>
+              </thead>
+              <tbody>
+                {dependencyDiff.slice(0, 20).map((e, idx) => (
+                  <tr key={`${e.caller_service}-${e.callee_service}-${idx}`}>
+                    <td>
+                      {e.caller_service} -&gt; {e.callee_service}
+                    </td>
+                    <td className={e.status === "new" ? "bad" : e.status === "removed" ? "warn" : ""}>{e.status}</td>
+                    <td>{num(e.call_diff_pct).toFixed(1)}</td>
+                    <td>{num(e.p95_diff_ms).toFixed(1)} ms</td>
+                    <td>{(num(e.error_rate_diff) * 100).toFixed(2)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
+        </section>
+      )}
     </div>
   );
 }

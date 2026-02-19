@@ -51,6 +51,28 @@ body {
   cursor: pointer;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab-btn {
+  border: 1px solid #9fc3e3;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a3f61;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #205493;
+  border-color: #205493;
+  color: #fff;
+}
+
 .panel-grid {
   display: grid;
   gap: 14px;
