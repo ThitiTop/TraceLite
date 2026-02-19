@@ -161,41 +161,56 @@ function App() {
     });
   }, [env, lookbackHours]);
 
+  const fetchJson = async <T,>(url: string, fallback: T): Promise<T> => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error(`Request failed ${res.status}: ${url}`);
+        return fallback;
+      }
+      return (await res.json()) as T;
+    } catch (e) {
+      console.error(e);
+      return fallback;
+    }
+  };
+
   const fetchDrilldown = async (traceId: string) => {
     if (!traceId) {
       setDrilldown(null);
       return;
     }
-    const res = await fetch(`${apiBase}/v1/traces/${traceId}/waterfall`);
-    const payload = await res.json();
-    setDrilldown(payload as DrilldownPayload);
+    const payload = await fetchJson<DrilldownPayload | null>(
+      `${apiBase}/v1/traces/${traceId}/waterfall`,
+      null
+    );
+    setDrilldown(payload);
   };
 
   const refresh = async () => {
     setLoading(true);
     try {
       const q = params.toString();
-      const [tracesRes, hostRes, depRes, compareRes, diffRes, errorRes] = await Promise.all([
-        fetch(`${apiBase}/v1/traces?${q}&limit=30&service=${encodeURIComponent(service)}`),
-        fetch(`${apiBase}/v1/hosts?${q}`),
-        fetch(`${apiBase}/v1/dependency?${q}`),
-        fetch(
-          `${apiBase}/v1/compare?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`
+      const [tracesData, hostData, depData, compareData, diffData, errData] = await Promise.all([
+        fetchJson<{ data: TraceItem[] }>(
+          `${apiBase}/v1/traces?${q}&limit=30&service=${encodeURIComponent(service)}`,
+          { data: [] }
         ),
-        fetch(
-          `${apiBase}/v1/dependency/diff?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`
+        fetchJson<{ hosts: HostItem[] }>(`${apiBase}/v1/hosts?${q}`, { hosts: [] }),
+        fetchJson<{ edges: GraphEdge[] }>(`${apiBase}/v1/dependency?${q}`, { edges: [] }),
+        fetchJson<{ metrics: CompareMetric[]; operation_diff: OperationDiff[]; root_causes: RootCause[]; anomalies: AnomalyBadge[] }>(
+          `${apiBase}/v1/compare?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`,
+          { metrics: [], operation_diff: [], root_causes: [], anomalies: [] }
         ),
-        fetch(
-          `${apiBase}/v1/errors?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`
+        fetchJson<{ edges: DependencyDiffEdge[] }>(
+          `${apiBase}/v1/dependency/diff?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`,
+          { edges: [] }
+        ),
+        fetchJson<ErrorPanel>(
+          `${apiBase}/v1/errors?${q}&service=${encodeURIComponent(service)}&base=${encodeURIComponent(baseVersion)}&cand=${encodeURIComponent(candVersion)}`,
+          { service_breakdown: [], top_operations: [], new_errors: [] }
         )
       ]);
-
-      const tracesData = await tracesRes.json();
-      const hostData = await hostRes.json();
-      const depData = await depRes.json();
-      const compareData = await compareRes.json();
-      const diffData = await diffRes.json();
-      const errData = await errorRes.json();
 
       const traceList = (tracesData.data ?? []) as TraceItem[];
       setTraces(traceList);
@@ -206,7 +221,7 @@ function App() {
       setRootCauses((compareData.root_causes ?? []) as RootCause[]);
       setAnomalies((compareData.anomalies ?? []) as AnomalyBadge[]);
       setDependencyDiff((diffData.edges ?? []) as DependencyDiffEdge[]);
-      setErrorPanel((errData ?? null) as ErrorPanel | null);
+      setErrorPanel(errData);
 
       const preferred =
         selectedTraceId && traceList.some((t) => t.trace_id === selectedTraceId)

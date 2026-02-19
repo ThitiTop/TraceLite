@@ -177,9 +177,9 @@ func (h *Handler) Dependency(w http.ResponseWriter, r *http.Request) {
 		where = append(where, fmt.Sprintf("env = '%s'", env))
 	}
 
-	sql := fmt.Sprintf(`
+sql := fmt.Sprintf(`
 SELECT
-  caller_service, callee_service, calls, error_calls, avg_latency_ms, p95_ms, max_ms,
+  caller_service, callee_service, calls, error_calls, avg_latency_ms, p95_latency_ms AS p95_ms, max_ms,
   round(if(calls = 0, 0, error_calls / calls), 4) AS error_rate
 FROM (
   SELECT
@@ -188,7 +188,7 @@ FROM (
     sum(calls) AS calls,
     sum(error_calls) AS error_calls,
     round(avg((p50_ms + p95_ms)/2), 2) AS avg_latency_ms,
-    round(avg(p95_ms), 2) AS p95_ms,
+    round(avg(p95_ms), 2) AS p95_latency_ms,
     max(max_ms) AS max_ms
   FROM dependency_edges_minute
   WHERE %s
